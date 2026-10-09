@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SnakeShield | Admin Dashboard & POS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;600;700;800&family=Inter:wght@400;600;700;900&display=swap');
+        body { font-family: 'Kantumruy Pro', 'Inter', sans-serif; background-color: #f8fafc; }
+        [x-cloak] { display: none !important; }
+        .tab-active { background-color: #059669 !important; color: white !important; box-shadow: 0 10px 15px -3px rgba(5, 150, 105, 0.3); }
+        @media print {
+            @page { size: auto; margin: 2mm; }
+            body { background: white !important; }
+            .no-print { display: none !important; }
+            .receipt-80mm { width: 78mm !important; max-width: 78mm !important; margin: 0 auto !important; padding: 2mm !important; }
+        }
+    </style>
+</head>
+<body x-data="adminSystem()" x-init="init()">
+    <div class="print:hidden">
+        <div x-show="toast.show" x-transition class="fixed top-5 right-5 z-[300] bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 border-l-4 border-emerald-500" x-cloak>
+            <i class="fas fa-check-circle text-emerald-400 text-xl"></i><span class="font-bold text-sm" x-text="toast.message"></span>
+        </div>
+
+        <template x-if="!isLoggedIn">
+            <div class="min-h-screen flex items-center justify-center bg-[#07130e] p-6">
+                <div class="bg-white p-8 md:p-10 rounded-[2.5rem] w-full max-w-md shadow-2xl text-center">
+                    <div class="w-16 h-16 rounded-2xl bg-emerald-600 text-white flex items-center justify-center text-3xl mx-auto mb-6 shadow-lg"><i class="fas fa-shield-halved"></i></div>
+                    <h1 class="text-2xl font-black text-slate-800 uppercase">SnakeShield <span class="text-emerald-600">Admin</span></h1>
+                    <form @submit.prevent="handleLogin()" autocomplete="off" class="mt-8 space-y-4 text-left">
+                        <div><label class="text-xs font-bold text-slate-600 mb-1 block">Username</label><input type="text" x-model="loginData.username" required class="w-full p-3.5 rounded-xl border bg-slate-50 font-bold"></div>
+                        <div><label class="text-xs font-bold text-slate-600 mb-1 block">Password</label><input type="password" x-model="loginData.password" required class="w-full p-3.5 rounded-xl border bg-slate-50 font-bold"></div>
+                        <button type="submit" :disabled="isLoading" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white p-4 rounded-xl font-black shadow-lg"><span x-text="isLoading ? 'កំពុងផ្ទៀងផ្ទាត់...' : 'ចូលប្រព័ន្ធ'"></span></button>
+                    </form>
+                </div>
+            </div>
+        </template>
+
+        <template x-if="isLoggedIn">
+            <div class="min-h-screen flex flex-col md:flex-row">
+                <aside class="w-full md:w-64 bg-slate-950 text-white p-6 flex flex-col gap-2 relative z-10 shadow-xl">
+                    <div class="mb-8 flex items-center gap-3 px-2">
+                        <div class="w-9 h-9 rounded-xl bg-emerald-600 flex items-center justify-center text-lg"><i class="fas fa-shield-halved"></i></div>
+                        <span class="font-extrabold text-sm uppercase">SnakeShield <span class="text-emerald-400">Pro</span></span>
+                    </div>
+                    <nav class="space-y-1.5 flex-1 text-sm font-bold">
+                        <button @click="tab = 'dashboard'" :class="tab === 'dashboard' ? 'tab-active' : 'text-slate-400 hover:bg-white/5'" class="w-full flex items-center gap-3 p-3.5 rounded-2xl"><i class="fas fa-chart-pie w-5 text-center"></i> ផ្ទាំងព័ត៌មាន</button>
+                        <button @click="tab = 'inventory'" :class="tab === 'inventory' ? 'tab-active' : 'text-slate-400 hover:bg-white/5'" class="w-full flex items-center gap-3 p-3.5 rounded-2xl"><i class="fas fa-box w-5 text-center"></i> គ្រប់គ្រងស្តុកទំនិញ</button>
+                        <button @click="tab = 'videos'" :class="tab === 'videos' ? 'tab-active bg-red-600 text-white shadow-lg shadow-red-600/30' : 'text-slate-400 hover:bg-white/5'" class="w-full flex items-center gap-3 p-3.5 rounded-2xl transition"><i class="fab fa-youtube w-5 text-center"></i> វីដេអូបង្រៀនប្រើ</button>
+                        <button @click="tab = 'expenses'" :class="tab === 'expenses' ? 'tab-active' : 'text-slate-400 hover:bg-white/5'" class="w-full flex items-center gap-3 p-3.5 rounded-2xl"><i class="fas fa-wallet w-5 text-center"></i> កត់ត្រាចំណាយ</button>
+                        <button @click="tab = 'sales'" :class="tab === 'sales' ? 'tab-active' : 'text-slate-400 hover:bg-white/5'" class="w-full flex items-center gap-3 p-3.5 rounded-2xl"><i class="fas fa-receipt w-5 text-center"></i> ប្រវត្តិលក់</button>
+                    </nav>
+                    <div class="pt-6 border-t border-slate-900 space-y-3">
+                        <a href="index.html" class="block text-center text-xs font-bold text-slate-400 hover:text-emerald-400 uppercase tracking-wider transition">ទៅកាន់ទំព័រមុខហាង</a>
+                        <button @click="handleLogout()" class="w-full p-3.5 bg-slate-900 text-red-400 rounded-2xl font-bold hover:bg-red-500 hover:text-white">ចាកចេញ</button>
+                    </div>
+                </aside>
+
+                <main class="flex-1 p-6 md:p-8 lg:p-10 overflow-y-auto">
+                    
+                    <!-- 1. DASHBOARD -->
+                    <div x-show="tab === 'dashboard'" x-cloak class="space-y-6">
+                        <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4 bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
+                            <div>
+                                <h1 class="text-2xl font-black text-slate-800">ផ្ទាំងរបាយការណ៍</h1>
+                                <p class="text-xs font-bold text-slate-400 mt-1">សង្ខេបទិន្នន័យអាជីវកម្មប្រចាំ <span class="text-emerald-600" x-text="getFilterLabel()"></span></p>
+                            </div>
+                            <div class="flex flex-wrap gap-2">
+                                <button @click="timeFilter = 'today'" :class="timeFilter === 'today' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/30' : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200'" class="px-4 py-2.5 rounded-xl font-bold text-xs transition">ថ្ងៃនេះ</button>
+                                <button @click="timeFilter = 'week'" :class="timeFilter === 'week' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/30' : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200'" class="px-4 py-2.5 rounded-xl font-bold text-xs transition">សប្តាហ៍នេះ</button>
+                                <button @click="timeFilter = 'month'" :class="timeFilter === 'month' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/30' : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200'" class="px-4 py-2.5 rounded-xl font-bold text-xs transition">ខែនេះ</button>
+                                <button @click="timeFilter = 'year'" :class="timeFilter === 'year' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/30' : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200'" class="px-4 py-2.5 rounded-xl font-bold text-xs transition">ឆ្នាំនេះ</button>
+                                <button @click="timeFilter = 'all'" :class="timeFilter === 'all' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/30' : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200'" class="px-4 py-2.5 rounded-xl font-bold text-xs transition">សរុបទាំងអស់</button>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+                            <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex items-center gap-5 relative overflow-hidden group hover:border-blue-200 transition">
+                                <div class="w-14 h-14 shrink-0 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center text-2xl group-hover:scale-110 transition duration-300"><i class="fas fa-wallet"></i></div>
+                                <div><p class="text-xs font-bold text-slate-400 mb-0.5">ចំណូលសរុប</p><h3 class="text-2xl font-black text-slate-800" x-text="'$' + getTotals().revenue"></h3></div>
+                            </div>
+                            <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex items-center gap-5 relative overflow-hidden group hover:border-orange-200 transition">
+                                <div class="w-14 h-14 shrink-0 rounded-2xl bg-orange-50 text-orange-500 flex items-center justify-center text-2xl group-hover:scale-110 transition duration-300"><i class="fas fa-file-invoice-dollar"></i></div>
+                                <div><p class="text-xs font-bold text-slate-400 mb-0.5">ចំណាយសរុប</p><h3 class="text-2xl font-black text-orange-500" x-text="'$' + getTotals().expenses"></h3></div>
+                            </div>
+                            <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex items-center gap-5 relative overflow-hidden group hover:border-emerald-200 transition">
+                                <div class="absolute -right-4 -top-4 w-16 h-16 bg-emerald-50 rounded-full group-hover:scale-150 transition duration-500"></div>
+                                <div class="w-14 h-14 shrink-0 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-2xl relative z-10 group-hover:scale-110 transition duration-300"><i class="fas fa-chart-line"></i></div>
+                                <div class="relative z-10"><p class="text-xs font-bold text-slate-400 mb-0.5">ប្រាក់ចំណេញសុទ្ធ</p><h3 class="text-2xl font-black text-emerald-600" x-text="'$' + getTotals().profit"></h3></div>
+                            </div>
+                            <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex items-center gap-5 relative overflow-hidden group hover:border-purple-200 transition">
+                                <div class="w-14 h-14 shrink-0 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center text-2xl group-hover:scale-110 transition duration-300"><i class="fas fa-shopping-bag"></i></div>
+                                <div><p class="text-xs font-bold text-slate-400 mb-0.5">ចំនួនកុម្ម៉ង់ (Orders)</p><h3 class="text-2xl font-black text-slate-800" x-text="getTotals().orderCount + ' វិក្កយបត្រ'"></h3></div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div class="lg:col-span-2 bg-white rounded-3xl shadow-sm border border-slate-100 flex flex-col">
+                                <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+                                    <h3 class="font-black text-slate-800 flex items-center gap-2"><i class="fas fa-exclamation-triangle text-amber-500"></i> ប្រកាសអាសន្នទំនិញជិតអស់ស្តុក</h3>
+                                    <span class="text-xs font-bold bg-amber-50 text-amber-600 px-3 py-1 rounded-full border border-amber-200" x-text="getLowStockItems().length + ' មុខ'"></span>
+                                </div>
+                                <div class="p-4 flex-1 overflow-y-auto max-h-[350px]">
+                                    <template x-if="getLowStockItems().length > 0">
+                                        <div class="space-y-3">
+                                            <template x-for="p in getLowStockItems()" :key="p.id">
+                                                <div class="flex items-center justify-between p-3 rounded-2xl border" :class="p.stock == 0 ? 'bg-red-50 border-red-100' : 'bg-amber-50 border-amber-100'">
+                                                    <div class="flex items-center gap-3">
+                                                        <img :src="getThumbnail(p)" class="w-10 h-10 rounded-lg object-cover border border-white shadow-sm shrink-0">
+                                                        <div>
+                                                            <p class="text-sm font-bold text-slate-800 line-clamp-1" x-text="p.name"></p>
+                                                            <p class="text-[10px] font-mono" :class="p.stock == 0 ? 'text-red-500' : 'text-amber-600'" x-text="'SKU: ' + (p.oe || 'គ្មាន')"></p>
+                                                        </div>
+                                                    </div>
+                                                    <div class="text-right">
+                                                        <span class="text-xs font-black px-3 py-1 rounded-lg" :class="p.stock == 0 ? 'bg-red-500 text-white' : 'bg-amber-500 text-white'" x-text="p.stock == 0 ? 'អស់ស្តុក' : 'សល់ ' + p.stock"></span>
+                                                    </div>
+                                                </div>
+                                            </template>
+                                        </div>
+                                    </template>
+                                    <template x-if="getLowStockItems().length === 0">
+                                        <div class="h-full flex flex-col items-center justify-center text-slate-400 py-10">
+                                            <i class="fas fa-check-circle text-4xl mb-2 text-emerald-300"></i>
+                                            <p class="text-sm font-bold">ស្តុកទំនិញមានគ្រប់គ្រាន់ល្អ</p>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <div class="space-y-6">
+                                <div class="bg-gradient-to-br from-slate-800 to-slate-950 p-8 rounded-3xl shadow-lg relative overflow-hidden text-white">
+                                    <i class="fas fa-boxes text-6xl absolute -bottom-4 -right-2 opacity-10"></i>
+                                    <h3 class="text-sm font-bold text-slate-400 mb-6 uppercase tracking-wider">សង្ខេបទុនស្តុកសរុបបច្ចុប្បន្ន</h3>
+                                    <div class="space-y-4">
+                                        <div>
+                                            <p class="text-xs font-bold text-slate-500 mb-1">ចំនួនទំនិញមានក្នុងឃ្លាំង</p>
+                                            <h3 class="text-3xl font-black text-blue-400" x-text="getTotals().totalStock + ' ឯកតា'"></h3>
+                                        </div>
+                                        <div class="pt-4 border-t border-slate-700/50">
+                                            <p class="text-xs font-bold text-slate-500 mb-1">តម្លៃទុនស្តុកសរុប (Asset Value)</p>
+                                            <h3 class="text-3xl font-black text-emerald-400" x-text="'$' + getTotals().stockValue"></h3>
+                                        </div>
+                                    </div>
+                                    <button @click="tab = 'inventory'" class="w-full mt-6 bg-white/10 hover:bg-white/20 text-white py-3 rounded-xl text-xs font-bold transition">ទៅកាន់ការគ្រប់គ្រងស្តុក</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+                            <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+                                <h3 class="font-black text-slate-800 flex items-center gap-2"><i class="fas fa-history text-blue-500"></i> ការកុម្ម៉ង់ថ្មីៗបំផុត (៥ចុងក្រោយ)</h3>
+                                <button @click="tab = 'sales'" class="text-xs font-bold text-blue-600 hover:text-blue-800">មើលទាំងអស់ <i class="fas fa-arrow-right ml-1"></i></button>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left">
+                                    <thead class="bg-slate-50 text-[10px] font-bold text-slate-400 uppercase">
+                                        <tr><th class="p-4 pl-6">កាលបរិច្ឆេទ</th><th class="p-4">អតិថិជន</th><th class="p-4">សរុបទឹកប្រាក់</th><th class="p-4 text-right pr-6">ចំណេញ</th></tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-100 text-sm">
+                                        <template x-for="order in getRecentOrders()" :key="order.id">
+                                            <tr class="hover:bg-slate-50/50 transition cursor-pointer" @click="openInvoice(order)">
+                                                <td class="p-4 pl-6"><span class="text-xs font-bold text-slate-500" x-text="formatDate(order.date)"></span></td>
+                                                <td class="p-4 font-bold text-slate-800" x-text="order.phone || 'គ្មានឈ្មោះ'"></td>
+                                                <td class="p-4 font-black text-slate-800" x-text="'$' + Number(order.revenue).toFixed(2)"></td>
+                                                <td class="p-4 text-right pr-6"><span class="bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-lg text-xs font-black border border-emerald-100" x-text="'+$' + Number(order.profit).toFixed(2)"></span></td>
+                                            </tr>
+                                        </template>
+                                        <tr x-show="getRecentOrders().length === 0">
+                                            <td colspan="4" class="p-8 text-center text-slate-400 font-bold text-xs">មិនទាន់មានទិន្នន័យលក់ទេ</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- 2. INVENTORY -->
+                    <div x-show="tab === 'inventory'" x-cloak>
+                        <div class="flex justify-between items-center mb-6 text-slate-800">
+                            <h1 class="text-2xl font-black">គ្រប់គ្រងស្តុក & លក់ចេញ</h1>
+                            <button @click="openPOS()" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md flex items-center gap-2 transition"><i class="fas fa-cart-plus"></i> លក់ទំនិញ (POS)</button>
+                        </div>
+
+                        <!-- Add/Edit Form -->
+                        <div class="bg-white p-6 md:p-8 rounded-[2.5rem] shadow-sm border border-slate-100 mb-8 text-slate-800 relative">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="space-y-4">
+                                    <div><label class="text-xs font-bold text-slate-500 mb-1 block">ឈ្មោះផលិតផល</label><input type="text" x-model="newP.name" class="w-full p-3.5 rounded-xl border bg-slate-50 outline-none focus:border-emerald-500 font-bold"></div>
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div><label class="text-xs font-bold text-slate-500 mb-1 block">តម្លៃដើម ($)</label><input type="number" step="any" x-model="newP.costPrice" class="w-full p-3.5 rounded-xl border bg-slate-50 font-bold outline-none"></div>
+                                        <div><label class="text-xs font-bold text-slate-500 mb-1 block">តម្លៃលក់ធម្មតា ($)</label><input type="number" step="any" x-model="newP.price" class="w-full p-3.5 rounded-xl border bg-slate-50 font-bold outline-none" :disabled="newP.variants.length > 0"></div>
+                                    </div>
+                                    <div class="grid grid-cols-3 gap-4">
+                                        <div><label class="text-xs font-bold text-blue-600 mb-1 block">SKU ទំនិញ</label><input type="text" x-model="newP.oe" class="w-full p-3.5 rounded-xl border border-blue-200 bg-blue-50 font-black text-blue-700 outline-none"></div>
+                                        <div><label class="text-xs font-bold text-emerald-600 mb-1 block">ស្តុក (កញ្ចប់)</label><input type="number" x-model="newP.stock" class="w-full p-3.5 rounded-xl border border-emerald-200 bg-emerald-50 font-black text-emerald-700 outline-none"></div>
+                                        <div class="relative">
+                                            <label class="text-[11px] font-bold text-pink-600 mb-1 block">ថ្លៃដឹកធម្មតា ($)</label>
+                                            <input type="number" step="any" x-model.number="newP.deliveryFee" class="w-full p-3.5 rounded-xl border border-pink-200 bg-pink-50 font-black text-pink-700 outline-none" :disabled="newP.variants.length > 0">
+                                            <span x-show="newP.deliveryFee == 0 || newP.deliveryFee === ''" class="absolute -bottom-4 left-0 text-[10px] text-pink-500 font-bold">🚚 ហ្វ្រីដឹក</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="space-y-4">
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="text-xs font-bold text-slate-500 mb-1 block">ប្រភេទផលិតផល</label>
+                                            <select x-model="newP.category" class="w-full p-3.5 rounded-xl border bg-slate-50 font-bold outline-none">
+                                                <option value="ថ្នាំម្សៅបណ្ដេញពស់">ថ្នាំម្សៅបណ្ដេញពស់</option>
+                                                <option value="ប្រូម៉ូសិន">ប្រូម៉ូសិន</option>
+                                                <option value="ថ្នាំបាញ់/ស្ព្រាយ">ថ្នាំបាញ់/ស្ព្រាយ</option>
+                                                <option value="ដុំស៊ុលហ្វ័រ">ដុំស៊ុលហ្វ័រ</option>
+                                            </select>
+                                        </div>
+                                        <div><label class="text-xs font-bold text-orange-500 mb-1 block">កាត់ស្តុក (Deduct Qty)</label><input type="number" x-model="newP.deductQty" class="w-full p-3.5 rounded-xl border border-orange-200 bg-orange-50 font-black text-orange-600 outline-none"></div>
+                                    </div>
+                                    <div><label class="text-xs font-bold text-slate-500 mb-1 block">រូបភាព</label><input type="file" @change="handleFileUpload" class="w-full p-2 border-2 border-dashed rounded-xl text-xs bg-slate-50"></div>
+                                    <div class="flex flex-wrap gap-3 mt-2">
+                                        <template x-for="(img, index) in newP.images" :key="index">
+                                            <div class="relative"><img :src="img" class="w-14 h-14 rounded-xl object-cover border shadow-sm"><button type="button" @click="removeImage(index)" class="absolute -top-2 -right-2 bg-red-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px]"><i class="fas fa-times"></i></button></div>
+                                        </template>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- កន្លែងបង្កើតជម្រើសប្រូម៉ូសិន (VARIANTS) -->
+                            <div class="mt-8 p-5 bg-gradient-to-r from-amber-50 to-orange-50 rounded-[1.5rem] border border-amber-200">
+                                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 gap-2">
+                                    <div>
+                                        <label class="text-sm font-black text-amber-800 flex items-center gap-2"><i class="fas fa-layer-group text-amber-600"></i> ជម្រើសកញ្ចប់ប្រូម៉ូសិនអតិថិជន (Variants)</label>
+                                        <p class="text-[10px] text-amber-600/80 font-bold mt-0.5">ឧ. ១ប្រអប់=2.5$ | ៥ប្រអប់=10$ (Freeដឹក)</p>
+                                    </div>
+                                    <button @click="newP.variants.push({name: '', price: '', dFee: ''})" class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow-sm w-max">+ បន្ថែមជម្រើស</button>
+                                </div>
+                                <div class="space-y-4">
+                                    <template x-for="(v, vIdx) in newP.variants" :key="vIdx">
+                                        <div class="flex flex-wrap md:flex-nowrap gap-3 items-center bg-white p-3 rounded-2xl border border-amber-100 shadow-sm relative">
+                                            <div class="flex-1 min-w-[200px]">
+                                                <label class="text-[10px] font-bold text-slate-400 block mb-1">ឈ្មោះជម្រើស (បង្ហាញលើវិក្កយបត្រ)</label>
+                                                <input type="text" x-model="v.name" placeholder="ឧ. ៥ ប្រអប់ (ហ្វ្រីដឹក)" class="w-full p-2.5 rounded-lg border bg-slate-50 font-bold text-sm outline-none focus:border-amber-500">
+                                            </div>
+                                            <div class="w-28 shrink-0">
+                                                <label class="text-[10px] font-bold text-emerald-600 block mb-1">តម្លៃលក់ ($)</label>
+                                                <input type="number" step="any" x-model.number="v.price" placeholder="10" class="w-full p-2.5 rounded-lg border bg-slate-50 font-black text-emerald-600 text-sm outline-none">
+                                            </div>
+                                            <div class="w-28 shrink-0 relative mb-3">
+                                                <label class="text-[10px] font-bold text-pink-600 block mb-1">ថ្លៃដឹក ($)</label>
+                                                <input type="number" step="any" x-model.number="v.dFee" placeholder="0" class="w-full p-2.5 rounded-lg border bg-slate-50 font-black text-pink-600 text-sm outline-none">
+                                                <span x-show="v.dFee == 0 || v.dFee === ''" class="absolute -bottom-4 left-0 text-[10px] text-pink-500 font-bold">🚚 ហ្វ្រីដឹក</span>
+                                            </div>
+                                            <button @click="newP.variants.splice(vIdx, 1)" class="w-10 h-10 mt-2 shrink-0 flex items-center justify-center rounded-xl bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition"><i class="fas fa-trash-can"></i></button>
+                                        </div>
+                                    </template>
+                                    <p x-show="newP.variants.length > 0" class="text-[11px] font-bold text-red-500 bg-red-50 p-2 rounded-lg inline-block border border-red-100 mt-2">⚠️ ពេលមានជម្រើសកញ្ចប់ តម្លៃលក់ធម្មតាខាងលើនឹងមិនយកមកគិតទេ!</p>
+                                </div>
+                            </div>
+                            
+                            <div class="flex gap-3 mt-6">
+                                <button @click="saveProduct()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white p-4 rounded-xl font-bold shadow-md transition uppercase tracking-wider" x-text="isEditMode ? 'កែប្រែទិន្នន័យ (Update)' : 'រក្សាទុកទំនិញ (Save)'"></button>
+                                <button x-show="isEditMode" @click="cancelEdit()" class="px-6 rounded-xl border border-slate-200 text-slate-500 font-bold hover:bg-slate-50 transition">បោះបង់</button>
+                            </div>
+                        </div>
+
+                        <!-- Table -->
+                        <div class="bg-white rounded-[2rem] overflow-hidden shadow-sm border border-slate-100">
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left border-collapse min-w-[700px]">
+                                    <thead class="bg-slate-50 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                        <tr><th class="p-4">ឈ្មោះទំនិញ & SKU</th><th class="p-4 text-center">ស្តុក</th><th class="p-4">តម្លៃ & ជម្រើសកញ្ចប់</th><th class="p-4 text-right">សកម្មភាព</th></tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-100 text-sm">
+                                        <template x-for="p in products.filter(x => x.category !== 'វីដេអូបង្រៀនប្រើ')" :key="p.id">
+                                            <tr class="hover:bg-slate-50/80">
+                                                <td class="p-4 flex items-center gap-3">
+                                                    <img :src="getThumbnail(p)" class="w-10 h-10 rounded-lg object-cover border shadow-sm">
+                                                    <div>
+                                                        <p class="font-bold text-slate-800 line-clamp-1 text-sm" x-text="p.name"></p>
+                                                        <p class="text-[10px] font-mono text-blue-500" x-text="'SKU: ' + (p.oe || 'គ្មាន')"></p>
+                                                    </div>
+                                                </td>
+                                                <td class="p-4 text-center"><span class="text-xs font-black px-3 py-1 rounded-lg" :class="(p.stock || 0) > 10 ? 'bg-emerald-100 text-emerald-700' : ((p.stock || 0) > 0 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700')" x-text="(p.stock || 0)"></span><div class="text-[9px] text-slate-400 mt-1 font-bold" x-text="'កាត់ម្តង: x' + (p.deductQty || 1)"></div></td>
+                                                <td class="p-4">
+                                                    <template x-if="p.variants && p.variants.length > 0">
+                                                        <div class="flex flex-wrap gap-1">
+                                                            <template x-for="v in p.variants">
+                                                                <span class="text-[9px] bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded font-bold" x-text="v.name + ' = $' + v.price + (Number(v.dFee) === 0 ? ' (ហ្វ្រីដឹក)' : '')"></span>
+                                                            </template>
+                                                        </div>
+                                                    </template>
+                                                    <template x-if="!p.variants || p.variants.length === 0">
+                                                        <div>
+                                                            <p class="text-[11px] text-slate-400" x-text="'ដើម: $' + p.costPrice"></p>
+                                                            <p class="font-black text-emerald-600">លក់: $<span x-text="p.price"></span>
+                                                                <span class="text-[9px] text-emerald-500 font-bold" x-show="p.deliveryFee == 0 || !p.deliveryFee">(Free ដឹក)</span>
+                                                            </p>
+                                                        </div>
+                                                    </template>
+                                                </td>
+                                                <td class="p-4 text-right whitespace-nowrap">
+                                                    <button @click="openPOS(p)" title="លក់ទំនិញនេះ (POS)" class="w-9 h-9 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition mr-1 shadow-sm"><i class="fas fa-cart-arrow-down"></i></button>
+                                                    <button @click="openLabel(p)" title="ព្រីនឡាប៊ែល" class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 hover:bg-amber-600 hover:text-white transition mr-1"><i class="fas fa-tag"></i></button>
+                                                    <button @click="editProduct(p)" title="កែប្រែ" class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition mr-1"><i class="fas fa-edit"></i></button>
+                                                    <button @click="removeProduct(p.id)" title="លុប" class="w-9 h-9 rounded-xl bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition"><i class="fas fa-trash-can"></i></button>
+                                                </td>
+                                            </tr>
+                                        </template>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. VIDEOS -->
+                    <div x-show="tab === 'videos'" x-cloak>
+                        <div class="flex justify-between items-center mb-6 text-slate-800"><h1 class="text-2xl font-black">គ្រប់គ្រងវីដេអូបង្រៀនប្រើ</h1></div>
+                        <div class="bg-white p-6 md:p-8 rounded-[2.5rem] shadow-sm border border-slate-100 mb-8 text-slate-800">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                                <div class="space-y-5">
+                                    <div><label class="text-xs font-bold text-slate-500 mb-1 block">ចំណងជើងវីដេអូ</label><input type="text" x-model="newV.name" class="w-full p-4 rounded-xl border bg-slate-50 outline-none focus:border-red-500 font-bold"></div>
+                                    <div><label class="text-xs font-bold text-red-600 mb-1 block"><i class="fab fa-youtube"></i> លីងវីដេអូ (YouTube URL)</label><input type="text" x-model="newV.videoUrl" placeholder="ឧ. https://www.youtube.com/watch?v=..." class="w-full p-4 rounded-xl border border-red-200 bg-red-50 text-red-700 font-bold outline-none focus:border-red-500"></div>
+                                    <div class="flex gap-3 pt-2">
+                                        <button @click="saveVideo()" class="flex-1 bg-red-600 hover:bg-red-700 text-white p-4 rounded-xl font-bold shadow-md transition uppercase tracking-wider" x-text="isVideoEditMode ? 'កែប្រែវីដេអូ (Update)' : 'រក្សាទុកវីដេអូ'"></button>
+                                        <button x-show="isVideoEditMode" @click="cancelVideoEdit()" class="px-6 rounded-xl border text-slate-500 font-bold hover:bg-slate-50 transition">បោះបង់</button>
+                                    </div>
+                                </div>
+                                <div class="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-3xl bg-slate-50 h-full min-h-[200px] p-4 relative overflow-hidden">
+                                    <template x-if="getYoutubeID(newV.videoUrl)">
+                                        <div class="relative w-full max-w-[280px] rounded-xl shadow-lg overflow-hidden border"><img :src="'https://img.youtube.com/vi/' + getYoutubeID(newV.videoUrl) + '/hqdefault.jpg'" class="w-full aspect-video object-cover"><div class="absolute inset-0 bg-black/20 flex items-center justify-center"><i class="fas fa-play text-red-600 text-4xl drop-shadow-md"></i></div></div>
+                                    </template>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-[2rem] overflow-hidden shadow-sm border border-slate-100">
+                            <table class="w-full text-left border-collapse">
+                                <thead class="bg-slate-50 text-[10px] font-bold text-slate-400 uppercase tracking-widest"><tr><th class="p-4 pl-6">វីដេអូ YouTube</th><th class="p-4 text-right pr-6">សកម្មភាព</th></tr></thead>
+                                <tbody class="divide-y divide-slate-100 text-sm">
+                                    <template x-for="p in products.filter(x => x.category === 'វីដេអូបង្រៀនប្រើ')" :key="p.id">
+                                        <tr class="hover:bg-slate-50/80">
+                                            <td class="p-4 pl-6 flex items-center gap-4">
+                                                <div class="w-24 h-14 bg-slate-200 rounded-lg overflow-hidden relative shrink-0 border shadow-sm"><img :src="'https://img.youtube.com/vi/' + getYoutubeID(p.videoUrl) + '/hqdefault.jpg'" class="w-full h-full object-cover"><div class="absolute inset-0 flex items-center justify-center bg-black/20"><i class="fas fa-play text-white/80"></i></div></div>
+                                                <p class="font-bold text-slate-800" x-text="p.name"></p>
+                                            </td>
+                                            <td class="p-4 text-right pr-6 whitespace-nowrap">
+                                                <button @click="editVideo(p)" class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition mr-1"><i class="fas fa-edit"></i></button>
+                                                <button @click="removeProduct(p.id)" class="w-9 h-9 rounded-xl bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition"><i class="fas fa-trash-can"></i></button>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- 4. EXPENSES -->
+                    <div x-show="tab === 'expenses'" x-cloak>
+                        <h1 class="text-2xl font-black mb-6 text-slate-800">កត់ត្រាការចំណាយទូទៅ</h1>
+                        <div class="bg-white p-6 md:p-8 rounded-[2.5rem] shadow-sm border border-slate-100 mb-8 text-slate-800">
+                            <div class="mb-6 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                <label class="text-xs font-bold text-slate-500 mb-3 block"><i class="fas fa-bolt text-amber-500"></i> ជម្រើសរហ័ស (ចុចដើម្បីបំពេញស្វ័យប្រវត្តិ)</label>
+                                <div class="flex flex-wrap gap-2">
+                                    <button @click="setExpense('ថ្លៃផ្ញើវីរៈប៊ុនថាំ (VET)')" class="px-3 py-2 bg-blue-50 text-blue-600 hover:bg-blue-500 hover:text-white border border-blue-200 rounded-xl text-xs font-bold transition">វីរៈប៊ុនថាំ (VET)</button>
+                                    <button @click="setExpense('ថ្លៃផ្ញើ J&T Express')" class="px-3 py-2 bg-red-50 text-red-600 hover:bg-red-500 hover:text-white border border-red-200 rounded-xl text-xs font-bold transition">J&T Express</button>
+                                    <button @click="setExpense('ថ្លៃផ្ញើកាពីតូល (Capitol)')" class="px-3 py-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white border border-emerald-200 rounded-xl text-xs font-bold transition">កាពីតូល (Capitol)</button>
+                                    <button @click="setExpense('ថ្លៃផ្ញើឡានឈ្នួលតាមខេត្ត')" class="px-3 py-2 bg-orange-50 text-orange-600 hover:bg-orange-500 hover:text-white border border-orange-200 rounded-xl text-xs font-bold transition">ឡានឈ្នួល / តាក់ស៊ី</button>
+                                    <button @click="setExpense('ថ្លៃដឹកក្នុងក្រុង (Grab/PassApp)')" class="px-3 py-2 bg-slate-200 text-slate-700 hover:bg-slate-700 hover:text-white border border-slate-300 rounded-xl text-xs font-bold transition">ដឹកក្នុងក្រុង</button>
+                                    <button @click="setExpense('ទិញថង់ខ្ចប់ និងស្កុត')" class="px-3 py-2 bg-purple-50 text-purple-600 hover:bg-purple-500 hover:text-white border border-purple-200 rounded-xl text-xs font-bold transition">ទិញសម្ភារៈខ្ចប់</button>
+                                    <button @click="setExpense('បង់លុយ Boost ផេក')" class="px-3 py-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-500 hover:text-white border border-indigo-200 rounded-xl text-xs font-bold transition">Boost ផេក</button>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div class="md:col-span-2"><input type="text" x-model="newExp.desc" placeholder="បរិយាយចំណាយ (ឧ. ថ្លៃដឹកភ្ញៀវ...)" class="w-full p-4 rounded-xl border bg-slate-50 font-bold outline-none focus:border-orange-500"></div>
+                                <div><input type="number" id="exp-amount" step="any" x-model="newExp.amount" placeholder="ទឹកប្រាក់ ($)" class="w-full p-4 rounded-xl border bg-slate-50 font-black text-orange-600 outline-none focus:border-orange-500"></div>
+                            </div>
+                            <button @click="addExpense()" class="w-full mt-4 bg-orange-500 hover:bg-orange-600 text-white p-4 rounded-xl font-bold uppercase shadow-md transition">កត់ត្រាចំណាយ</button>
+                        </div>
+                        <div class="bg-white rounded-[2rem] overflow-hidden shadow-sm border text-slate-800">
+                            <table class="w-full text-left">
+                                <template x-for="(exp, idx) in expenses" :key="exp.id">
+                                    <tr class="border-b hover:bg-slate-50 transition">
+                                        <td class="p-5 font-bold" x-text="exp.desc"></td>
+                                        <td class="p-5 font-black text-orange-600 text-right" x-text="'-$' + Number(exp.amount).toFixed(2)"></td>
+                                        <td class="p-5 text-right"><button @click="removeExpense(exp.id)" class="text-slate-300 hover:text-red-500"><i class="fas fa-times"></i></button></td>
+                                    </tr>
+                                </template>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- 5. SALES RECORDS -->
+                    <div x-show="tab === 'sales'" x-cloak>
+                        <div class="flex justify-between items-center mb-6">
+                            <h1 class="text-2xl font-black text-slate-800">ប្រវត្តិបញ្ជាទិញ (Sales)</h1>
+                            <button @click="openPOS()" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-md transition flex items-center gap-2"><i class="fas fa-cart-plus"></i> បង្កើតការលក់ (POS)</button>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <template x-for="order in sales" :key="order.id">
+                                <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 text-slate-800">
+                                    <!-- ថ្មី៖ កាតប្រវត្តិលក់រចនាស្អាត មានថ្ងៃខែម៉ោងច្បាស់ៗ -->
+                                    <div class="flex justify-between items-start mb-4 border-b border-slate-100 pb-3">
+                                        <div class="min-w-0 pr-2">
+                                            <div class="inline-flex items-center gap-1.5 bg-slate-50 px-3 py-1 rounded-lg border border-slate-200 mb-2.5">
+                                                <i class="far fa-calendar-alt text-blue-600 text-xs"></i>
+                                                <span class="text-xs font-bold text-slate-600" x-text="formatDate(order.date)"></span>
+                                            </div>
+                                            <h4 class="font-extrabold text-sm md:text-base text-slate-800 flex items-center gap-2">
+                                                <i class="fas fa-user text-slate-400 text-sm"></i>
+                                                <span x-text="order.phone || 'មិនមានព័ត៌មានអតិថិជន'"></span>
+                                            </h4>
+                                            <p x-show="order.address" class="text-xs text-slate-500 mt-1.5 flex items-start gap-1.5">
+                                                <i class="fas fa-map-marker-alt text-red-400 mt-0.5"></i>
+                                                <span x-text="order.address"></span>
+                                            </p>
+                                        </div>
+                                        <div class="bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-xl text-xs font-black border border-emerald-100 shrink-0">+$<span x-text="Number(order.profit).toFixed(2)"></span> ចំណេញ</div>
+                                    </div>
+
+                                    <div class="space-y-2 pt-1">
+                                        <template x-for="item in order.items" :key="item.id">
+                                            <div class="flex items-center gap-3">
+                                                <img :src="orderItemThumb(item)" class="w-10 h-10 shrink-0 rounded-lg object-cover bg-slate-50 border">
+                                                <div class="flex-1 min-w-0">
+                                                    <p class="text-xs font-bold text-slate-700 truncate" x-text="item.name"></p>
+                                                    <p class="text-[10px] text-slate-400" x-text="item.qty + ' x $' + Number(item.price).toFixed(2)"></p>
+                                                </div>
+                                                <span class="text-xs font-black text-slate-700" :class="item.price === 0 ? 'text-pink-500' : ''" x-text="item.price === 0 ? 'ថែមជូន' : '$' + (item.price * item.qty).toFixed(2)"></span>
+                                            </div>
+                                        </template>
+                                    </div>
+                                    <div class="mt-4 pt-4 border-t flex justify-between items-center">
+                                        <p class="text-sm font-extrabold text-slate-800" x-text="'សរុប: $' + Number(order.revenue).toFixed(2)"></p>
+                                        <div class="flex items-center gap-2">
+                                            <button @click="openInvoice(order)" class="px-3.5 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white text-xs font-bold transition shadow-sm"><i class="fas fa-receipt"></i> វិក្កយបត្រ</button>
+                                            <button @click="editExistingOrder(order)" class="px-3.5 py-1.5 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-600 hover:text-white text-xs font-bold transition shadow-sm"><i class="fas fa-edit"></i> កែប្រែ</button>
+                                            <button @click="deleteOrder(order.id)" class="text-slate-300 hover:text-red-500 p-1.5"><i class="fas fa-trash-can"></i></button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </main>
+            </div>
+        </template>
+    </div>
+
+    <!-- POS Modal -->
+    <div x-show="isManualOrderOpen" x-cloak class="fixed inset-0 z-[400] flex items-center justify-center bg-black/70 p-4 overflow-y-auto print:hidden">
+        <div class="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-4 my-8">
+            <div class="flex justify-between items-center pb-3 border-b">
+                <h3 class="font-extrabold text-lg text-slate-800 flex items-center gap-2"><i class="fas fa-cart-plus text-blue-600"></i> លក់ចេញពីស្តុកផ្ទាល់ (POS)</h3>
+                <button @click="isManualOrderOpen = false" class="text-slate-400 hover:text-slate-600 text-lg"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <div class="bg-slate-50 p-4 rounded-2xl border space-y-3">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 block mb-1">ជ្រើសរើសទំនិញ</label>
+                        <select x-model="manualInput.prodId" @change="updateManualPrice()" class="w-full p-3 rounded-xl border outline-none font-bold text-sm focus:border-blue-500">
+                            <option value="">-- សូមជ្រើសរើស --</option>
+                            <template x-for="p in products.filter(x => x.category !== 'វីដេអូបង្រៀនប្រើ')" :key="p.id">
+                                <option :value="p.id" x-text="p.name + ' (ស្តុក: ' + (p.stock || 0) + ')'"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div><label class="text-xs font-bold text-slate-500 block mb-1">ចំនួនលក់ (Qty)</label><input type="number" x-model.number="manualInput.qty" min="1" class="w-full p-3 rounded-xl border outline-none font-bold text-sm text-center focus:border-blue-500"></div>
+                        <div>
+                            <label class="text-xs font-bold text-orange-600 block mb-1">តម្លៃលក់ដុំ/រាយ ($)</label>
+                            <div class="flex gap-2">
+                                <input type="number" step="any" x-model.number="manualInput.customPrice" placeholder="តម្លៃលក់" class="w-full p-3 rounded-xl border border-orange-200 bg-orange-50 outline-none font-bold text-sm text-orange-700 focus:border-orange-500">
+                                <button @click="manualInput.customPrice = 0" type="button" class="px-3 bg-pink-100 text-pink-600 hover:bg-pink-200 rounded-xl text-xs font-bold transition flex items-center justify-center border border-pink-200 shadow-sm">🎁</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <button @click="addManualItem()" class="w-full py-3 bg-slate-800 text-white rounded-xl font-bold text-sm hover:bg-slate-900 transition shadow-sm">+ បញ្ចូលទំនិញទៅក្នុងវិក្កយបត្រ</button>
+            </div>
+
+            <div class="border rounded-2xl p-4 min-h-[100px] space-y-2">
+                <template x-for="(item, index) in manualOrder.items" :key="index">
+                    <div class="flex justify-between items-center bg-slate-50 p-2 rounded-xl border text-sm">
+                        <div class="flex-1 font-bold text-slate-700 truncate pr-2" x-text="item.name"></div>
+                        <div class="font-mono font-bold text-slate-500 text-xs px-2" x-show="item.price > 0" x-text="item.qty + ' x $' + Number(item.price).toFixed(2)"></div>
+                        <div class="font-black w-16 text-right" :class="item.price === 0 ? 'text-pink-500 text-xs' : 'text-emerald-600'" x-text="item.price === 0 ? 'ថែមជូន' : '$' + (item.price * item.qty).toFixed(2)"></div>
+                        <button @click="manualOrder.items.splice(index, 1)" class="ml-3 text-red-400 hover:text-red-600"><i class="fas fa-times-circle"></i></button>
+                    </div>
+                </template>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="space-y-2">
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="text" x-model="manualOrder.customerName" placeholder="ឈ្មោះអតិថិជន" class="w-full p-3 rounded-xl border text-sm font-bold outline-none focus:border-emerald-500">
+                        <input type="text" x-model="manualOrder.phone" placeholder="លេខទូរស័ព្ទ" class="w-full p-3 rounded-xl border text-sm font-bold outline-none focus:border-emerald-500">
+                    </div>
+                    <div class="grid grid-cols-3 gap-2">
+                        <input type="text" x-model="manualOrder.address" placeholder="អាសយដ្ឋាន (បើមាន)" class="w-full p-3 col-span-2 rounded-xl border text-sm font-bold outline-none focus:border-emerald-500">
+                        <input type="number" step="any" min="0" x-model.number="manualOrder.deliveryFee" placeholder="ថ្លៃដឹក ($)" class="w-full p-3 rounded-xl border border-blue-200 bg-blue-50 text-blue-700 text-sm font-bold outline-none focus:border-blue-500">
+                    </div>
+                </div>
+                <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex flex-col justify-center items-end shadow-sm">
+                    <p class="text-xs font-bold text-emerald-700 uppercase">សរុបទឹកប្រាក់</p>
+                    <p class="text-3xl font-black text-emerald-600 font-mono" x-text="'$' + manualOrderTotal()"></p>
+                </div>
+            </div>
+            
+            <div class="flex gap-2 pt-2 border-t">
+                <button @click="isManualOrderOpen = false" class="flex-1 py-3 rounded-xl border text-slate-600 font-bold hover:bg-slate-50 transition">បិទ</button>
+                <button @click="submitManualOrder()" :disabled="isSubmitting" class="flex-1 py-3 rounded-xl bg-blue-600 text-white font-bold shadow-md hover:bg-blue-700 transition flex items-center justify-center gap-1.5">
+                    <i class="fas fa-save"></i> 
+                    <span x-text="isSubmitting ? 'កំពុងរក្សាទុក...' : (isEditingOrder ? 'រក្សាទុកការកែប្រែ' : 'រក្សាទុក & កាត់ស្តុក')"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Invoice Modal & Label Modal -->
+    <div x-show="isInvoiceOpen" x-cloak class="fixed inset-0 z-[400] flex items-center justify-center bg-black/70 p-4 overflow-y-auto print:static print:block print:bg-transparent print:p-0"><div class="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl my-8 print:shadow-none print:m-0 print:p-0 print:w-auto print:border-none"><div class="flex justify-between items-center pb-3 border-b no-print"><h3 class="font-extrabold text-sm text-slate-800 flex items-center gap-2"><i class="fas fa-file-invoice text-emerald-600"></i> វិក្កយបត្រ (80mm)</h3><button @click="isInvoiceOpen = false" class="text-slate-400 hover:text-slate-600 text-lg"><i class="fas fa-times"></i></button></div><div class="printable-section bg-white border border-dashed rounded-xl p-3 text-slate-900 text-xs font-sans receipt-80mm space-y-2.5 print:border-none print:p-0"><div class="text-center border-b border-dashed border-slate-400 pb-2 space-y-0.5"><h2 class="text-sm font-black uppercase tracking-wider text-black">SnakeShield Cambodia</h2><p class="text-[10px] text-slate-600">ឯកទេសថ្នាំ និងឧបករណ៍បណ្ដេញសត្វពស់</p><p class="text-[10px] text-slate-800 font-bold">ទូរស័ព្ទ: 012 345 678 / 098 765 432</p></div><div class="space-y-1 text-[11px] border-b border-dashed border-slate-400 pb-2"><div class="flex justify-between"><span>វិក្កយបត្រ #:</span><span class="font-mono font-bold" x-text="activeInvoice?.id"></span></div><div class="flex justify-between"><span>កាលបរិច្ឆេទ:</span><span class="font-bold" x-text="formatDate(activeInvoice?.date)"></span></div><div class="flex justify-between"><span>អតិថិជន:</span><span class="font-bold" x-text="activeInvoice?.phone || 'N/A'"></span></div><div x-show="activeInvoice?.address"><span class="text-slate-600 block">ទីតាំងដឹក:</span><span class="font-bold text-[10px] block leading-tight mt-0.5" x-text="activeInvoice?.address"></span></div></div><table class="w-full text-[11px] border-collapse"><thead><tr class="border-b border-slate-400 text-left text-slate-600"><th class="py-1">ទំនិញ</th><th class="py-1 text-center">ចំនួន</th><th class="py-1 text-right">តម្លៃ</th></tr></thead><tbody class="divide-y divide-slate-200"><template x-for="item in activeInvoice?.items || []" :key="item.id"><tr><td class="py-1.5 font-bold leading-tight pr-1"><span x-text="item.name"></span><span x-show="item.price === 0" class="text-[8px] bg-black text-white px-1 ml-1 rounded">ថែមជូន</span></td><td class="py-1.5 text-center font-bold" x-text="item.qty"></td><td class="py-1.5 text-right font-mono font-bold" x-text="item.price === 0 ? 'Free' : '$' + Number(item.price * item.qty).toFixed(2)"></td></tr></template></tbody></table><div class="border-t border-dashed border-slate-400 pt-2 space-y-1"><div class="flex justify-between text-xs font-black text-black"><span>សរុប (TOTAL):</span><span class="font-mono text-sm" x-text="'$' + Number(activeInvoice?.revenue || 0).toFixed(2)"></span></div></div></div><div class="flex gap-2 pt-2 no-print"><button @click="isInvoiceOpen = false" class="flex-1 py-2.5 rounded-xl border text-slate-600 font-bold text-xs hover:bg-slate-50">បិទ</button><button @click="triggerPrint()" class="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow flex items-center justify-center gap-1.5"><i class="fas fa-print"></i> ព្រីនវិក្កយបត្រ</button></div></div></div>
+    <div x-show="isLabelOpen" x-cloak class="fixed inset-0 z-[400] flex items-center justify-center bg-black/70 p-4 overflow-y-auto print:static print:block print:bg-transparent print:p-0"><div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl my-8 print:shadow-none print:m-0 print:p-0 print:w-auto print:border-none"><div class="flex justify-between items-center pb-3 border-b no-print"><h3 class="font-extrabold text-sm text-slate-800 flex items-center gap-2"><i class="fas fa-tag text-amber-500"></i> ឡាប៊ែល (40mm x 80mm)</h3><button @click="isLabelOpen = false" class="text-slate-400 hover:text-slate-600 text-lg"><i class="fas fa-times"></i></button></div><div class="no-print space-y-2 mt-4"><label class="text-xs font-bold text-slate-600 block">ជ្រើសរើសចំនួនស្លាកដែលត្រូវព្រីន:</label><div class="flex gap-1.5"><template x-for="n in [1, 2, 4, 6, 8, 12]"><button @click="labelCount = n; $nextTick(() => renderBarcodes())" :class="labelCount === n ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-700'" class="flex-1 py-1.5 rounded-lg text-xs font-bold transition" x-text="n"></button></template></div></div><div class="printable-section bg-slate-100 p-4 rounded-2xl border flex flex-col gap-2 items-center mt-4 max-h-96 overflow-y-auto print:max-h-none print:bg-white print:border-none print:p-0"><template x-for="i in labelCount" :key="i"><div class="label-sticker-40x80 bg-white border-2 border-black rounded-lg text-slate-900 flex flex-col justify-between"><div class="flex justify-between items-start border-b border-black pb-0.5 leading-tight"><span class="text-[9px] font-black uppercase tracking-wider text-black">SnakeShield</span><span class="text-[9px] font-bold text-slate-700 font-mono" x-text="activeLabelProduct?.oe || ''"></span></div><div class="py-0.5 flex justify-between items-center"><div class="min-w-0 pr-1 text-left flex-1"><h4 class="text-[10px] font-extrabold text-black line-clamp-1 leading-tight" x-text="activeLabelProduct?.name"></h4></div><div class="text-right pl-1 shrink-0"><span class="text-xs font-black font-mono text-black" x-text="'$' + Number(activeLabelProduct?.price || 0).toFixed(2)"></span></div></div><div class="text-center -my-1"><svg class="barcode-target mx-auto max-h-7 w-full" :id="'barcode-' + i"></svg></div><div class="border-t border-black pt-0.5 flex justify-between text-[7px] font-bold text-black uppercase"><span>*ថ្នាំបណ្ដេញសត្វពស់*</span><span>កុំឱ្យកុមារប៉ះពាល់</span></div></div></template></div><div class="flex gap-2 pt-2 mt-4 no-print"><button @click="isLabelOpen = false" class="flex-1 py-2.5 rounded-xl border text-slate-600 font-bold text-xs hover:bg-slate-50">បិទ</button><button @click="triggerPrint()" class="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs shadow flex items-center justify-center gap-1.5"><i class="fas fa-print"></i> ព្រីនឡាប៊ែល</button></div></div></div>
+
+    <script>
+        function adminSystem() {
+            return {
+                apiBase: (window.location.protocol === 'file:') ? 'http://127.0.0.1:5000' : '',
+                tab: 'dashboard',
+                token: sessionStorage.getItem('k_auto_token') || '',
+                isLoggedIn: !!sessionStorage.getItem('k_auto_token'),
+                isLoading: false, isSubmitting: false,
+                loginData: { username: '', password: '' },
+                products: [], expenses: [], sales: [], isEditMode: false,
+                toast: { show: false, message: '' },
+                
+                newP: { id: '', name: '', costPrice: '', price: '', stock: 0, deductQty: 1, oe: '', info: 'ធម្មជាតិ ១០០%', images: [], category: 'ថ្នាំម្សៅបណ្ដេញពស់', deliveryFee: 0, variants: [] },
+                newV: { id: '', name: '', costPrice: 0, price: 0, stock: 0, deductQty: 1, oe: '', info: '', images: [], category: 'វីដេអូបង្រៀនប្រើ', videoUrl: '', deliveryFee: 0 },
+                isVideoEditMode: false,
+                newExp: { desc: '', amount: '' },
+
+                isManualOrderOpen: false,
+                isEditingOrder: false, 
+                editingOrderId: null,
+                
+                manualOrder: { customerName: '', phone: '', address: '', deliveryFee: '', items: [] },
+                manualInput: { prodId: '', qty: 1, customPrice: '' },
+
+                activeInvoice: null, isInvoiceOpen: false,
+                activeLabelProduct: null, isLabelOpen: false, labelCount: 1,
+
+                timeFilter: 'today',
+
+                init() { if (this.isLoggedIn) this.fetchData(); },
+                
+                async fetchData() {
+                    try {
+                        const [p, s, e] = await Promise.all([fetch(`${this.apiBase}/api/products`), fetch(`${this.apiBase}/api/sales`), fetch(`${this.apiBase}/api/expenses`)]);
+                        this.products = await p.json(); this.sales = await s.json(); this.expenses = await e.json();
+                    } catch (err) {}
+                },
+
+                async handleLogin() {
+                    this.isLoading = true;
+                    try {
+                        const res = await fetch(`${this.apiBase}/api/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(this.loginData) });
+                        const data = await res.json();
+                        if (res.ok && data.token) {
+                            this.token = data.token; sessionStorage.setItem('k_auto_token', data.token);
+                            this.isLoggedIn = true; this.loginData = { username: '', password: '' };
+                            this.fetchData(); this.triggerToast("ចូលប្រព័ន្ធបានសម្រេច!");
+                        } else { alert("ឈ្មោះគណនី ឬពាក្យសម្ងាត់មិនត្រឹមត្រូវ!"); }
+                    } catch (err) { alert("មិនអាចភ្ជាប់ទៅកាន់ Server Python បានទេ!"); } finally { this.isLoading = false; }
+                },
+                handleLogout() { this.isLoggedIn = false; this.token = ''; sessionStorage.removeItem('k_auto_token'); },
+                
+                parseToCambodiaTime(dateString) {
+                    if (!dateString) return new Date();
+                    let dStr = String(dateString);
+                    if (!dStr.includes('T') && !dStr.includes('Z') && dStr.includes(' ')) { dStr = dStr.replace(' ', 'T') + 'Z'; }
+                    const d = new Date(dStr);
+                    if (isNaN(d)) return new Date();
+                    return new Date(d.toLocaleString("en-US", { timeZone: "Asia/Phnom_Penh" }));
+                },
+
+                // ថ្មី៖ កែប្រែទម្រង់ម៉ោងឱ្យបង្ហាញច្បាស់ និងងាយស្រួលមើល (មាន AM/PM)
+                formatDate(d) { 
+                    if (!d) return 'មិនមានកាលបរិច្ឆេទ'; 
+                    let dStr = String(d);
+                    if (!dStr.includes('T') && !dStr.includes('Z') && dStr.includes(' ')) { dStr = dStr.replace(' ', 'T') + 'Z'; }
+                    const dt = new Date(dStr); 
+                    if (isNaN(dt)) return d; 
+                    return dt.toLocaleString('en-US', { timeZone: 'Asia/Phnom_Penh', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }); 
+                },
+
+                isDateInRange(dateString, filterType) {
+                    if (filterType === 'all') return true;
+                    const now = new Date();
+                    const camNow = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Phnom_Penh" }));
+                    const camD = this.parseToCambodiaTime(dateString);
+
+                    if (filterType === 'today') { return camD.getDate() === camNow.getDate() && camD.getMonth() === camNow.getMonth() && camD.getFullYear() === camNow.getFullYear(); }
+                    if (filterType === 'week') {
+                        const startOfWeek = new Date(camNow); startOfWeek.setHours(0,0,0,0); startOfWeek.setDate(camNow.getDate() - camNow.getDay());
+                        const endOfWeek = new Date(startOfWeek); endOfWeek.setDate(startOfWeek.getDate() + 6); endOfWeek.setHours(23,59,59,999);
+                        return camD >= startOfWeek && camD <= endOfWeek;
+                    }
+                    if (filterType === 'month') { return camD.getMonth() === camNow.getMonth() && camD.getFullYear() === camNow.getFullYear(); }
+                    if (filterType === 'year') { return camD.getFullYear() === camNow.getFullYear(); }
+                    return true;
+                },
+
+                getFilterLabel() {
+                    const labels = { 'all': 'សរុប', 'today': 'ថ្ងៃនេះ', 'week': 'សប្តាហ៍នេះ', 'month': 'ខែនេះ', 'year': 'ឆ្នាំនេះ' };
+                    return labels[this.timeFilter];
+                },
+
+                getRecentOrders() { return this.sales.slice(0, 5); },
+                getLowStockItems() { return this.getUniqueStockList().filter(p => p.stock < 10).sort((a, b) => a.stock - b.stock); },
+
+                getTotals() {
+                    const filteredSales = this.sales.filter(s => this.isDateInRange(s.date, this.timeFilter));
+                    const filteredExpenses = this.expenses.filter(e => this.isDateInRange(e.date, this.timeFilter));
+
+                    const revenue = filteredSales.reduce((t, o) => t + parseFloat(o.revenue || 0), 0);
+                    const expenseTotal = filteredExpenses.reduce((t, e) => t + parseFloat(e.amount || 0), 0);
+                    const profit = filteredSales.reduce((t, o) => t + parseFloat(o.profit || 0), 0) - expenseTotal;
+                    
+                    const uniqueStock = this.getUniqueStockList();
+                    const totalStock = uniqueStock.reduce((t, p) => t + parseInt(p.stock || 0), 0);
+                    const stockValue = uniqueStock.reduce((t, p) => t + (parseFloat(p.costPrice || 0) * parseInt(p.stock || 0)), 0);
+                    
+                    return { revenue: revenue.toFixed(2), expenses: expenseTotal.toFixed(2), profit: profit.toFixed(2), orderCount: filteredSales.length, totalStock: totalStock, stockValue: stockValue.toFixed(2) };
+                },
+
+                getUniqueStockList() {
+                    const uniqueList = [];
+                    const seenSkus = new Set();
+                    this.products.forEach(p => {
+                        if (p.category === 'វីដេអូបង្រៀនប្រើ') return;
+                        const sku = (p.oe || '').trim();
+                        if (sku && seenSkus.has(sku)) return;
+                        if (sku) seenSkus.add(sku);
+                        const safeStock = parseInt(p.stock) || 0;
+                        uniqueList.push({ ...p, stock: safeStock });
+                    });
+                    return uniqueList;
+                },
+
+                openPOS(product = null) {
+                    this.isEditingOrder = false; this.editingOrderId = null;
+                    this.manualOrder = { customerName: '', phone: '', address: '', deliveryFee: '', items: [] };
+                    this.manualInput = { prodId: '', qty: 1, customPrice: '' };
+                    if (product) { this.manualInput.prodId = product.id; this.manualInput.customPrice = product.price; }
+                    this.isManualOrderOpen = true;
+                },
+                
+                editExistingOrder(order) {
+                    this.manualOrder = JSON.parse(JSON.stringify(order));
+                    let phoneStr = order.phone || '';
+                    if (phoneStr.includes(' - ')) {
+                        let parts = phoneStr.split(' - ');
+                        this.manualOrder.customerName = parts[0];
+                        this.manualOrder.phone = parts[1] || '';
+                    } else {
+                        this.manualOrder.customerName = phoneStr;
+                        this.manualOrder.phone = '';
+                    }
+
+                    let dItemIndex = this.manualOrder.items.findIndex(i => i.id === 'DEL-FEE');
+                    if (dItemIndex > -1) {
+                        this.manualOrder.deliveryFee = this.manualOrder.items[dItemIndex].price;
+                        this.manualOrder.items.splice(dItemIndex, 1);
+                    } else {
+                        this.manualOrder.deliveryFee = '';
+                    }
+
+                    this.isEditingOrder = true;
+                    this.editingOrderId = order.id;
+                    this.isManualOrderOpen = true;
+                },
+                
+                updateManualPrice() {
+                    const p = this.products.find(x => x.id == this.manualInput.prodId);
+                    this.manualInput.customPrice = p ? p.price : '';
+                },
+                
+                addManualItem() {
+                    if (!this.manualInput.prodId || !this.manualInput.qty || this.manualInput.customPrice === '' || isNaN(this.manualInput.customPrice) || this.manualInput.customPrice < 0) {
+                        return alert("សូមជ្រើសរើសទំនិញ ចំនួន និងតម្លៃឱ្យបានត្រឹមត្រូវ!");
+                    }
+                    const p = this.products.find(x => x.id == this.manualInput.prodId);
+                    let existing = this.manualOrder.items.find(i => i.id == p.id);
+                    if (existing) { 
+                        existing.qty += parseInt(this.manualInput.qty); 
+                        existing.price = parseFloat(this.manualInput.customPrice); 
+                    } else { 
+                        this.manualOrder.items.push({ id: p.id, name: p.name, price: parseFloat(this.manualInput.customPrice), qty: parseInt(this.manualInput.qty) }); 
+                    }
+                    this.manualInput = { prodId: '', qty: 1, customPrice: '' };
+                },
+                
+                manualOrderTotal() { 
+                    let itemsTotal = this.manualOrder.items.reduce((total, item) => total + (item.price * item.qty), 0);
+                    let dFee = parseFloat(this.manualOrder.deliveryFee) || 0;
+                    return (itemsTotal + dFee).toFixed(2); 
+                },
+                
+                async submitManualOrder() {
+                    if (this.manualOrder.items.length === 0) return alert("សូមបញ្ចូលទំនិញយ៉ាងហោចណាស់ ១ មុខ!");
+                    this.isSubmitting = true;
+
+                    let finalPhone = this.manualOrder.phone;
+                    if (this.manualOrder.customerName) {
+                        finalPhone = this.manualOrder.customerName + (this.manualOrder.phone ? ' - ' + this.manualOrder.phone : '');
+                    }
+
+                    let finalItems = [...this.manualOrder.items];
+                    let dFee = parseFloat(this.manualOrder.deliveryFee) || 0;
+                    if (dFee > 0) { finalItems.push({ id: 'DEL-FEE', name: '🚚 ថ្លៃសេវាដឹកជញ្ជូន', price: dFee, qty: 1 }); }
+                    
+                    let revenue = 0; let totalCost = 0;
+                    finalItems.forEach(item => {
+                        let qty = parseInt(item.qty) || 0; let price = parseFloat(item.price) || 0;
+                        revenue += (price * qty);
+                        if (item.id !== 'DEL-FEE') {
+                            let prod = this.products.find(p => p.id == item.id);
+                            let cost = prod ? parseFloat(prod.costPrice) || 0 : 0;
+                            totalCost += (cost * qty);
+                        }
+                    });
+                    let profit = revenue - totalCost;
+
+                    if (this.isEditingOrder) {
+                        let orderIndex = this.sales.findIndex(s => s.id === this.editingOrderId);
+                        if (orderIndex > -1) {
+                            this.sales[orderIndex].phone = finalPhone; this.sales[orderIndex].address = this.manualOrder.address;
+                            this.sales[orderIndex].items = finalItems; this.sales[orderIndex].revenue = revenue; this.sales[orderIndex].profit = profit;
+                        }
+                        await this.syncToPython('sales', this.sales);
+                        this.triggerToast("កែប្រែប្រវត្តិលក់បានជោគជ័យ!"); this.isManualOrderOpen = false;
+                    } else {
+                        const payload = { ...this.manualOrder, items: finalItems, phone: finalPhone, date: new Date().toISOString() };
+                        try {
+                            const res = await fetch(`${this.apiBase}/api/sales`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-API-Key': this.token }, body: JSON.stringify(payload) });
+                            if (res.ok) { this.triggerToast("លក់កាត់ស្តុកបានជោគជ័យ!"); this.isManualOrderOpen = false; this.fetchData(); } else { alert("មានបញ្ហាក្នុងការរក្សាទុក!"); }
+                        } catch (error) { alert("មិនអាចភ្ជាប់ទៅ Server ទេ!"); } 
+                    }
+                    this.isSubmitting = false;
+                },
+
+                openInvoice(order) { this.activeInvoice = order; this.isInvoiceOpen = true; },
+                openLabel(product) { this.activeLabelProduct = product; this.labelCount = 1; this.isLabelOpen = true; this.$nextTick(() => { this.renderBarcodes(); }); },
+                renderBarcodes() {
+                    const rawCode = String(this.activeLabelProduct?.id || '100000000000');
+                    const code = rawCode.length > 8 ? rawCode.slice(-8) : rawCode;
+                    for (let i = 1; i <= this.labelCount; i++) {
+                        try { JsBarcode(`#barcode-${i}`, code, { format: "CODE128", width: 1.1, height: 18, displayValue: true, fontSize: 8, margin: 0 }); } catch (e) {}
+                    }
+                },
+                triggerPrint() { setTimeout(() => window.print(), 100); },
+                
+                getYoutubeID(url) { if (!url) return ''; const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|shorts\/|watch\?v=|\&v=)([^#\&\?]*).*/; const match = url.match(regExp); return (match && match[2].length === 11) ? match[2] : null; },
+                getThumbnail(p) { return (p.images && p.images.length > 0) ? p.images[0] : (p.image || 'https://via.placeholder.com/100?text=SnakeShield'); },
+                orderItemThumb(item) { 
+                    if (item.id === 'DEL-FEE') return 'https://via.placeholder.com/100/e0f2fe/0369a1?text=%F0%9F%9A%9A';
+                    const prod = this.products.find(p => String(p.id) === String(item.id)); 
+                    if (prod) return this.getThumbnail(prod); 
+                    return item.thumb || 'https://via.placeholder.com/100?text=SnakeShield'; 
+                },
+                
+                async handleFileUpload(event) {
+                    const files = Array.from(event.target.files);
+                    for (let file of files) { this.newP.images.push(await this.compressImage(file)); }
+                },
+                compressImage(file) {
+                    return new Promise((res) => {
+                        const reader = new FileReader(); reader.readAsDataURL(file);
+                        reader.onload = (e) => {
+                            const img = new Image(); img.src = e.target.result;
+                            img.onload = () => {
+                                const canvas = document.createElement('canvas'); const MAX = 600;
+                                let w = img.width, h = img.height;
+                                if (w > MAX) { h *= MAX / w; w = MAX; }
+                                canvas.width = w; canvas.height = h;
+                                canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                                res(canvas.toDataURL('image/jpeg', 0.6));
+                            };
+                        };
+                    });
+                },
+
+                removeImage(index) { this.newP.images.splice(index, 1); },
+
+                async saveProduct() {
+                    if(!this.newP.name || (!this.newP.price && this.newP.variants.length === 0)) return alert("សូមបំពេញឈ្មោះ និងតម្លៃលក់!");
+                    this.newP.deductQty = parseInt(this.newP.deductQty) || 1;
+                    this.newP.stock = parseInt(this.newP.stock) || 0;
+                    this.newP.deliveryFee = parseFloat(this.newP.deliveryFee) || 0; 
+                    
+                    if(this.newP.variants.length > 0) {
+                        this.newP.price = this.newP.variants[0].price;
+                        this.newP.deliveryFee = this.newP.variants[0].dFee;
+                    }
+
+                    if(this.isEditMode) {
+                        this.products = this.products.map(p => p.id === this.newP.id ? {...this.newP} : p);
+                        this.triggerToast("បានកែប្រែដោយជោគជ័យ!");
+                    } else {
+                        this.newP.id = Date.now();
+                        this.products.unshift({...this.newP});
+                        this.triggerToast("បានបន្ថែមទំនិញថ្មីដោយជោគជ័យ!");
+                    }
+                    if (this.newP.oe && this.newP.oe.trim() !== '') {
+                        this.products.forEach(p => { if (p.oe === this.newP.oe) p.stock = this.newP.stock; });
+                    }
+                    this.syncToPython('products', this.products);
+                    this.cancelEdit();
+                },
+                editProduct(p) {
+                    this.isEditMode = true; this.newP = JSON.parse(JSON.stringify(p));
+                    if(!this.newP.images) this.newP.images = [];
+                    if(!this.newP.deductQty) this.newP.deductQty = 1;
+                    if(!this.newP.deliveryFee) this.newP.deliveryFee = 0;
+                    if(!this.newP.variants) this.newP.variants = [];
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                },
+                cancelEdit() { this.isEditMode = false; this.newP = { id: '', name: '', costPrice: '', price: '', stock: 0, deductQty: 1, oe: '', info: 'ធម្មជាតិ ១០០%', images: [], category: 'ថ្នាំម្សៅបណ្ដេញពស់', deliveryFee: 0, variants: [] }; },
+                
+                saveVideo() {
+                    if(!this.newV.name || !this.newV.videoUrl) return alert("សូមបំពេញចំណងជើង និងលីងវីដេអូ!");
+                    if(!this.getYoutubeID(this.newV.videoUrl)) return alert("លីង YouTube មិនត្រឹមត្រូវទេ!");
+                    
+                    if(this.isVideoEditMode) {
+                        this.products = this.products.map(p => p.id === this.newV.id ? {...this.newV} : p);
+                        this.triggerToast("បានកែប្រែវីដេអូដោយជោគជ័យ!");
+                    } else {
+                        this.newV.id = Date.now();
+                        this.products.unshift({...this.newV});
+                        this.triggerToast("បានបន្ថែមវីដេអូថ្មីដោយជោគជ័យ!");
+                    }
+                    this.syncToPython('products', this.products);
+                    this.cancelVideoEdit();
+                },
+                editVideo(p) {
+                    this.isVideoEditMode = true; 
+                    this.newV = JSON.parse(JSON.stringify(p));
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                },
+                cancelVideoEdit() { 
+                    this.isVideoEditMode = false; 
+                    this.newV = { id: '', name: '', costPrice: 0, price: 0, stock: 0, deductQty: 1, oe: '', info: '', images: [], category: 'វីដេអូបង្រៀនប្រើ', videoUrl: '', deliveryFee: 0 }; 
+                },
+
+                async removeProduct(id) { if(confirm("តើអ្នកច្បាស់ទេថានឹងលុប?")) { this.products = this.products.filter(p => p.id !== id); this.syncToPython('products', this.products); } },
+                
+                setExpense(desc) {
+                    this.newExp.desc = desc;
+                    this.$nextTick(() => { document.getElementById('exp-amount').focus(); });
+                },
+
+                async addExpense() { 
+                    if(!this.newExp.desc || !this.newExp.amount) return; 
+                    this.expenses.unshift({ id: Date.now(), date: new Date().toISOString(), ...this.newExp }); 
+                    this.syncToPython('expenses', this.expenses); 
+                    this.newExp = { desc: '', amount: '' }; 
+                    this.triggerToast("កត់ត្រាចំណាយរួចរាល់!"); 
+                },
+                
+                async removeExpense(id) { this.expenses = this.expenses.filter(e => e.id !== id); this.syncToPython('expenses', this.expenses); },
+                async deleteOrder(id) { if(confirm("លុបប្រវត្តិនៃការកុម្ម៉ង់នេះ?")) { this.sales = this.sales.filter(s => s.id !== id); this.syncToPython('sales', this.sales); } },
+                async syncToPython(type, data) {
+                    try {
+                        const res = await fetch(`${this.apiBase}/api/${type}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-API-Key': this.token }, body: JSON.stringify(data) });
+                        if (res.status === 401) { this.handleLogout(); alert("Session ផុតកំណត់ សូមចូលប្រព័ន្ធម្តងទៀត។"); }
+                    } catch (err) { alert("រក្សាទុកមិនបានសម្រេច។"); }
+                },
+                triggerToast(msg) { this.toast.message = msg; this.toast.show = true; setTimeout(() => this.toast.show = false, 3000); }
+            }
+        }
+    </script>
+</body>
+</html>

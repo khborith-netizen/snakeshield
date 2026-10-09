@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="km" x-data="shopSystem()" x-init="init()" :class="{ 'dark': darkMode }">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SnakeShield Cambodia | ថ្នាំបណ្ដេញពស់ និងឧបករណ៍សុវត្ថិភាព</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { 
+            darkMode: 'class', 
+            theme: { 
+                extend: { 
+                    colors: { 
+                        darkBg: '#06130d', 
+                        lightBg: '#f0fdf4' 
+                    }
+                } 
+            } 
+        }
+    </script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@splidejs/splide@4.1.4/dist/css/splide.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@splidejs/splide@4.1.4/dist/js/splide.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@300;400;600;700;800&family=Inter:wght@400;600;800;900&display=swap');
+        body { font-family: 'Kantumruy Pro', 'Inter', sans-serif; transition: background-color 0.3s; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .glass-nav { backdrop-filter: blur(15px); border-bottom: 1px solid rgba(16, 185, 129, 0.15); }
+        .product-card { transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1); }
+        .product-card:hover { transform: translateY(-4px); }
+        [x-cloak] { display: none !important; }
+
+        .btn-promo-blink { background-color: #ff6b6b !important; color: white !important; border-color: #ff8787 !important; animation: flash-red 0.4s ease-in-out infinite alternate !important; }
+        .btn-promo-active { background-color: #fa5252 !important; color: white !important; border-color: #e03131 !important; box-shadow: inset 0 3px 6px rgba(0,0,0,0.2); transform: scale(0.98); }
+        .label-promo-hot { background-color: #ff6b6b !important; color: white !important; animation: flash-red 0.4s ease-in-out infinite alternate !important; }
+        @keyframes flash-red { 0% { transform: scale(1); box-shadow: 0 0 5px rgba(255, 107, 107, 0.4); filter: brightness(0.95); } 100% { transform: scale(1.08); box-shadow: 0 0 20px rgba(255, 107, 107, 0.85); filter: brightness(1.1); } }
+        .splide__slide.is-active img.thumbnail-img { border: 3px solid #10b981; opacity: 1; }
+        .thumbnail-img { opacity: 0.5; transition: all 0.3s ease; }
+    </style>
+</head>
+<body class="bg-lightBg text-slate-900 dark:bg-darkBg dark:text-white">
+
+    <nav class="fixed w-full z-[100] glass-nav bg-white/90 dark:bg-slate-950/90 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 h-20 flex justify-between items-center">
+            <div class="flex items-center gap-3 cursor-pointer" @click="window.location.reload()">
+                <div class="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center text-2xl shadow-lg shadow-emerald-600/30">
+                    <i class="fas fa-shield-halved"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-black tracking-tight text-emerald-800 dark:text-emerald-400 leading-none">SnakeShield</h1>
+                    <p class="text-[11px] font-bold text-slate-500 dark:text-slate-400 mt-0.5">ថ្នាំបណ្ដេញពស់ & សុវត្ថិភាពគេហដ្ឋាន</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <button @click="toggleDarkMode()" class="p-3 rounded-2xl bg-emerald-50 dark:bg-slate-800 text-amber-500 shadow-sm hover:scale-105 transition"><i class="fas" :class="darkMode ? 'fa-sun' : 'fa-moon'"></i></button>
+                <button @click="isCartOpen = true" class="relative p-3 bg-emerald-600 text-white rounded-2xl shadow-lg shadow-emerald-600/30 hover:bg-emerald-700 transition">
+                    <i class="fas fa-shopping-basket"></i>
+                    <span x-show="cartTotalQty() > 0" x-text="cartTotalQty()" class="absolute -top-1.5 -right-1.5 bg-amber-500 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full ring-4 ring-white dark:ring-darkBg"></span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 pt-28">
+        <section id="hero-slider" class="splide rounded-[2.5rem] overflow-hidden border border-emerald-100 dark:border-emerald-950 shadow-xl">
+            <div class="splide__track text-white">
+                <ul class="splide__list">
+                    <li class="splide__slide relative h-[250px] md:h-[420px]">
+                        <img src="https://images.unsplash.com/photo-1588880331179-bc9b93a8cb5e?auto=format&fit=crop&q=80&w=1200" class="w-full h-full object-cover">
+                        <div class="absolute inset-0 bg-gradient-to-r from-emerald-950/90 via-emerald-900/60 to-transparent flex flex-col justify-center px-8 md:px-14">
+                            <span class="bg-amber-400 text-slate-950 text-xs font-black px-3 py-1 rounded-full w-max mb-3 uppercase tracking-wider">សុវត្ថិភាព ១០០%</span>
+                            <h2 class="text-2xl md:text-5xl font-extrabold leading-tight">ការពារគេហដ្ឋាន និងចម្ការ<br><span class="text-emerald-300">ពីសត្វពស់សាហាវ</span></h2>
+                            <p class="text-sm md:text-base text-emerald-100 mt-2 max-w-lg">រូបមន្តធម្មជាតិ គ្មានផលប៉ះពាល់ដល់មនុស្ស និងសត្វចិញ្ចឹម ប្រសិទ្ធភាពយូរអង្វែង។</p>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </section>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 mt-8">
+        <div class="relative">
+            <i class="fas fa-magnifying-glass absolute left-6 top-1/2 -translate-y-1/2 text-emerald-600/70 dark:text-emerald-400 pointer-events-none"></i>
+            <input type="search" x-model="searchQuery" inputmode="search" autocomplete="off" placeholder="ស្វែងរក..." class="w-full bg-white dark:bg-slate-900 border-2 border-emerald-100 dark:border-emerald-950 rounded-full py-4 pl-14 pr-14 text-base font-bold outline-none focus:border-emerald-500 transition-all shadow-sm">
+            <button x-show="searchQuery" @click="searchQuery = ''" type="button" class="absolute right-5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center hover:bg-emerald-600 hover:text-white transition-all"><i class="fas fa-times text-sm"></i></button>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 mt-8">
+        <div class="flex overflow-x-auto gap-3 pb-3 no-scrollbar items-center">
+            <template x-for="cat in ['ទាំងអស់', 'ប្រូម៉ូសិន', 'វីដេអូបង្រៀនប្រើ']">
+                <button @click="activeCategory = cat" 
+                    class="whitespace-nowrap px-6 py-3 rounded-full text-sm font-bold transition-all border-2 flex items-center gap-1.5 shadow-sm"
+                    :class="cat === 'ប្រូម៉ូសិន' ? (activeCategory === cat ? 'btn-promo-active' : 'btn-promo-blink') : (activeCategory === cat ? 'bg-emerald-600 text-white border-emerald-600 shadow-md' : 'bg-white dark:bg-slate-900 text-emerald-800 dark:text-emerald-400 border-emerald-100 dark:border-slate-800 hover:border-emerald-400')">
+                    <span x-show="cat === 'ប្រូម៉ូសិន'" class="text-lg">🔥</span>
+                    <span x-text="cat" :class="cat === 'ប្រូម៉ូសិន' ? 'tracking-wider uppercase' : ''"></span>
+                </button>
+            </template>
+        </div>
+    </div>
+
+    <main id="product-list" class="max-w-7xl mx-auto px-4 pt-4 pb-20">
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+            <template x-for="product in filteredProducts()" :key="product.id">
+                <div class="product-card group bg-white dark:bg-slate-900 border border-emerald-100/80 dark:border-slate-800/80 rounded-[1.8rem] md:rounded-[2.2rem] p-3 md:p-4 flex flex-col h-full relative overflow-hidden shadow-sm hover:shadow-md">
+                    
+                    <div class="relative w-full mb-3 rounded-[1.2rem] md:rounded-[1.6rem] bg-emerald-950/10 dark:bg-slate-950 overflow-hidden border border-slate-100 dark:border-slate-800 flex items-center justify-center cursor-pointer h-40 md:h-56" @click="openGallery(product)">
+                        <img :src="getThumbnail(product)" class="w-full h-full object-cover transition duration-500 group-hover:scale-105">
+                        <div x-show="product.images && product.images.length > 1" class="absolute bottom-2 right-2 bg-black/60 text-white text-[9px] font-bold px-2 py-1 rounded-full z-10 flex gap-1 items-center">
+                            <i class="fas fa-images"></i><span x-text="product.images.length"></span>
+                        </div>
+                        <div class="absolute top-2.5 left-2.5 z-30" x-show="product.category !== 'វីដេអូបង្រៀនប្រើ'">
+                            <span :class="product.category === 'ប្រូម៉ូសិន' ? 'label-promo-hot' : (product.info.includes('ធម្មជាតិ') ? 'bg-emerald-600 text-white' : 'bg-amber-500 text-slate-950')" class="text-[8px] md:text-[10px] font-extrabold px-3 py-1.5 rounded-full uppercase tracking-wider inline-flex items-center gap-1">
+                                  <i x-show="product.category === 'ប្រូម៉ូសិន'" class="fas fa-bolt text-yellow-300"></i><span x-text="product.category === 'ប្រូម៉ូសិន' ? 'ពិសេស' : product.info"></span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="px-1 flex-1 flex flex-col">
+                        <span class="text-[9px] md:text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mb-0.5" x-text="product.category"></span>
+                        <h3 class="font-bold text-slate-800 dark:text-slate-100 text-xs md:text-base mb-1 line-clamp-2 leading-snug" x-text="product.name"></h3>
+                        <span class="text-[9px] md:text-[11px] text-slate-400 font-medium" x-text="'ទំហំ/កូដ: ' + product.oe"></span>
+                    </div>
+                    
+                    <div x-show="product.category !== 'វីដេអូបង្រៀនប្រើ'" class="px-1 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex flex-col gap-2 mt-3">
+                        
+                        <template x-if="product.variants && product.variants.length > 0">
+                            <!-- ថ្មី៖ លោតពាក្យ (ហ្វ្រីដឹក) ដោយស្វ័យប្រវត្តិក្នុង Dropdown បើ dFee = 0 -->
+                            <select x-model="selectedVariants[product.id]" x-init="if(selectedVariants[product.id] === undefined) selectedVariants[product.id] = 0" class="w-full text-xs p-2.5 rounded-xl border bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-700 text-amber-900 dark:text-amber-100 font-bold outline-none cursor-pointer">
+                                <template x-for="(v, idx) in product.variants">
+                                    <option :value="idx" x-text="v.name + ' = $' + Number(v.price).toFixed(2) + (Number(v.dFee) === 0 ? ' (ហ្វ្រីដឹក🚚)' : '')"></option>
+                                </template>
+                            </select>
+                        </template>
+
+                        <div class="flex items-center justify-between">
+                            <div class="flex flex-col gap-0.5">
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <span class="text-lg md:text-2xl font-extrabold text-emerald-700 dark:text-emerald-300" x-text="'$' + getDisplayPrice(product)"></span>
+                                    
+                                    <!-- ថ្មី៖ ឡាប៊ែលហ្វ្រីដឹកពណ៌ផ្កាឈូក លោតមកស្វ័យប្រវត្តិបើអត់ថ្លៃសេវា -->
+                                    <span x-show="isFreeDelivery(product)" class="bg-pink-100 text-pink-600 border border-pink-200 text-[9px] md:text-[10px] font-black px-2 py-0.5 rounded-md shadow-sm">ហ្វ្រីដឹក 🚚</span>
+                                </div>
+                            </div>
+                            <button @click="addToCart(product)" class="bg-emerald-600 hover:bg-emerald-700 text-white w-10 h-10 shrink-0 rounded-xl shadow-md active:scale-95 flex items-center justify-center transition">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+        <div x-show="filteredProducts().length === 0" x-cloak class="text-center py-20">
+            <i class="fas fa-shield-cat text-6xl text-slate-300 dark:text-slate-700 mb-4"></i>
+            <p class="text-lg font-bold text-slate-600 dark:text-slate-400">រកមិនឃើញផលិតផលនេះទេ</p>
+            <button @click="searchQuery = ''; activeCategory = 'ទាំងអស់'" type="button" class="mt-5 px-6 py-2.5 rounded-full bg-emerald-600 text-white font-bold text-sm hover:bg-emerald-700 transition">មើលផលិតផលទាំងអស់</button>
+        </div>
+    </main>
+
+    <!-- GALLERY MODAL -->
+    <div x-show="isGalleryOpen" x-cloak class="fixed inset-0 z-[400] flex flex-col items-center justify-center bg-black/95 p-4 md:p-10 pb-8">
+        <button @click="closeGallery()" class="absolute top-6 right-6 text-white text-3xl z-[410] hover:text-red-500 transition"><i class="fas fa-times"></i></button>
+        <div class="w-full max-w-3xl flex-1 flex flex-col justify-center min-h-0 mb-4">
+            <section id="main-slider" class="splide w-full">
+                <div class="splide__track w-full">
+                    <ul class="splide__list">
+                        <template x-for="(item, index) in currentGalleryItems" :key="index">
+                            <li class="splide__slide flex items-center justify-center w-full h-full">
+                                <template x-if="item.type === 'image'"><img :src="item.src" class="max-w-full max-h-[65vh] object-contain rounded-2xl"></template>
+                                <template x-if="item.type === 'video'">
+                                    <a :href="item.src" target="_blank" class="relative block w-full max-w-2xl group cursor-pointer">
+                                        <img :src="item.thumb" class="w-full rounded-2xl object-cover aspect-video border border-slate-700">
+                                        <div class="absolute inset-0 bg-black/40 flex items-center justify-center rounded-2xl group-hover:bg-black/20 transition">
+                                            <div class="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center text-white shadow-[0_0_20px_rgba(255,0,0,0.8)] animate-pulse"><i class="fas fa-play text-2xl ml-1"></i></div>
+                                        </div>
+                                        <p class="absolute bottom-4 left-0 w-full text-center text-white font-bold text-sm drop-shadow-md">ចុចទីនេះ ដើម្បីទស្សនាវីដេអូពេញ (YouTube)</p>
+                                    </a>
+                                </template>
+                            </li>
+                        </template>
+                    </ul>
+                </div>
+            </section>
+        </div>
+        <div x-show="currentGalleryItems.length > 1" class="w-full max-w-xl mx-auto h-20 shrink-0">
+            <section id="thumbnail-slider" class="splide">
+                <div class="splide__track">
+                    <ul class="splide__list">
+                        <template x-for="(item, index) in currentGalleryItems" :key="index">
+                            <li class="splide__slide cursor-pointer border-2 border-transparent rounded-xl overflow-hidden relative">
+                                <img :src="item.thumb" class="thumbnail-img w-full h-full object-cover">
+                                <div x-show="item.type === 'video'" class="absolute inset-0 flex items-center justify-center bg-black/40 pointer-events-none"><i class="fas fa-play text-white text-sm"></i></div>
+                            </li>
+                        </template>
+                    </ul>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- CART DRAWER -->
+    <div x-show="isCartOpen" x-cloak class="fixed inset-0 z-[200] overflow-hidden">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="isCartOpen = false"></div>
+        <div class="absolute inset-y-0 right-0 w-full max-w-md bg-white dark:bg-[#07130e] border-l border-emerald-100 dark:border-slate-800 flex flex-col shadow-2xl">
+            <div class="p-6 border-b border-emerald-100 dark:border-slate-800 flex justify-between items-center dark:text-white">
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-shopping-basket text-emerald-600 text-xl"></i>
+                    <h2 class="text-xl font-extrabold">កន្ត្រកទំនិញ</h2>
+                </div>
+                <button @click="isCartOpen = false" class="text-slate-400 hover:text-red-500 transition text-xl"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto p-4 space-y-3">
+                <template x-for="(item, index) in cart" :key="index">
+                    <div class="bg-emerald-50/50 dark:bg-slate-900/60 p-4 rounded-2xl border border-emerald-100 dark:border-slate-800 space-y-3 dark:text-white text-slate-800">
+                        <div class="flex items-center gap-3">
+                            <img :src="item.thumb" class="w-14 h-14 rounded-xl object-cover bg-white border border-slate-200">
+                            <div class="flex-1 min-w-0">
+                                <h4 class="text-xs font-bold truncate" x-text="item.name"></h4>
+                                <p class="text-emerald-700 dark:text-emerald-400 font-extrabold mt-1" x-text="'$' + (item.price * item.qty).toFixed(2)"></p>
+                            </div>
+                            <button @click="removeFromCart(index)" class="text-slate-400 hover:text-red-500 p-1"><i class="fas fa-trash-can text-sm"></i></button>
+                        </div>
+                        <div class="flex items-center justify-between bg-white dark:bg-slate-950 p-1.5 rounded-xl border border-emerald-100 dark:border-slate-800">
+                            <span class="text-[10px] font-bold text-slate-400 ml-2">ចំនួន</span>
+                            <div class="flex items-center gap-3 bg-slate-50 dark:bg-slate-900 rounded-lg p-1">
+                                <button @click="updateQty(index, -1)" class="w-7 h-7 flex items-center justify-center rounded bg-white dark:bg-slate-800 font-bold">-</button>
+                                <span class="text-xs font-extrabold w-5 text-center" x-text="item.qty"></span>
+                                <button @click="updateQty(index, 1)" class="w-7 h-7 flex items-center justify-center rounded bg-white dark:bg-slate-800 font-bold">+</button>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+                <div x-show="cart.length === 0" class="text-center py-12 text-slate-400"><i class="fas fa-basket-shopping text-4xl mb-3 text-slate-300"></i><p class="text-sm font-bold">កន្ត្រកទំនិញរបស់អ្នកនៅទំនេរ</p></div>
+            </div>
+
+            <div x-show="cart.length > 0" class="p-5 bg-emerald-50/40 dark:bg-slate-900/40 border-t border-emerald-100 dark:border-slate-800 space-y-3">
+                <input type="text" x-model="customerPhone" placeholder="លេខទូរស័ព្ទទទួលទំនិញ (ឧ. 012 345 678)" class="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-sm dark:text-white outline-none focus:border-emerald-500">
+                <textarea x-model="customerAddress" placeholder="អាសយដ្ឋានដឹកជញ្ជូន (ផ្ទះលេខ, ផ្លូវ, ខណ្ឌ/ស្រុក, ខេត្ត/រាជធានី)..." class="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-sm dark:text-white outline-none focus:border-emerald-500 h-16"></textarea>
+            </div>
+
+            <div x-show="cart.length > 0" class="p-6 border-t border-emerald-100 dark:border-slate-800 bg-white dark:bg-darkBg">
+                <div class="space-y-1.5 mb-4 dark:text-white text-slate-800">
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="text-slate-500 dark:text-slate-400 font-bold">សរុបទំនិញ:</span><span class="font-bold" x-text="'$' + cartTotal()"></span>
+                    </div>
+                    <div class="flex justify-between items-center text-sm text-pink-600 dark:text-pink-400">
+                        <span class="font-bold">ថ្លៃដឹកជញ្ជូន:</span><span class="font-bold" x-text="calculateDeliveryFee() === 0 ? 'ឥតគិតថ្លៃ (Free)' : '$' + calculateDeliveryFee().toFixed(2)"></span>
+                    </div>
+                    <div class="flex justify-between items-end pt-3 mt-2 border-t border-slate-200 dark:border-slate-800">
+                        <span class="font-bold text-xs uppercase text-slate-400">សរុបទាំងអស់</span><span class="text-3xl font-black text-emerald-700 dark:text-emerald-400" x-text="'$' + grandTotal()"></span>
+                    </div>
+                </div>
+                <button @click="sendToTelegram()" :disabled="isSubmitting" class="w-full bg-emerald-600 hover:bg-emerald-700 py-4 rounded-2xl font-extrabold uppercase text-white shadow-lg shadow-emerald-600/30 active:scale-98 transition flex items-center justify-center gap-2">
+                    <i class="fas fa-check-circle"></i><span x-text="isSubmitting ? 'កំពុងផ្ញើ...' : 'បញ្ជាក់ការបញ្ជាទិញ'"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function shopSystem() {
+            return {
+                darkMode: localStorage.getItem('theme') === 'dark',
+                isCartOpen: false, searchQuery: '', activeCategory: 'ទាំងអស់', cart: [], products: [],
+                
+                isGalleryOpen: false, currentGalleryItems: [], mainSplide: null, thumbSplide: null,
+                
+                selectedVariants: {}, 
+                customerPhone: '', customerAddress: '', isSubmitting: false,
+
+                init() {
+                    fetch('/api/products').then(res => res.json()).then(data => { this.products = data; }).catch(err => { const saved = localStorage.getItem('k_auto_products'); this.products = saved ? JSON.parse(saved) : []; });
+                    this.$nextTick(() => { new Splide('#hero-slider', { type: 'loop', autoplay: true, interval: 4000, arrows: false }).mount(); });
+                },
+
+                getThumbnail(p) { return (p.images && p.images.length > 0) ? p.images[0] : (p.image || 'https://via.placeholder.com/300?text=SnakeShield'); },
+                getYoutubeID(url) { if (!url) return ''; const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|shorts\/|watch\?v=|\&v=)([^#\&\?]*).*/; const match = url.match(regExp); return (match && match[2].length === 11) ? match[2] : null; },
+                
+                openGallery(product) { 
+                    let items = [];
+                    let imgs = (product.images && product.images.length > 0) ? product.images : [product.image || 'https://via.placeholder.com/300?text=SnakeShield'];
+                    imgs.forEach(img => { if (img) items.push({ type: 'image', src: img, thumb: img }); });
+                    if (product.category === 'វីដេអូបង្រៀនប្រើ' || product.videoUrl) {
+                        let ytId = this.getYoutubeID(product.videoUrl);
+                        if (ytId) { let ytThumb = 'https://img.youtube.com/vi/' + ytId + '/hqdefault.jpg'; items.push({ type: 'video', src: 'https://www.youtube.com/watch?v=' + ytId, thumb: ytThumb }); }
+                    }
+                    this.currentGalleryItems = items; this.isGalleryOpen = true; 
+                    this.$nextTick(() => { 
+                        if (this.mainSplide) this.mainSplide.destroy(); if (this.thumbSplide) this.thumbSplide.destroy(); 
+                        this.mainSplide = new Splide('#main-slider', { type: 'fade', pagination: false, arrows: true, rewind: true }); 
+                        this.thumbSplide = new Splide('#thumbnail-slider', { fixedWidth: 80, fixedHeight: 80, gap: 10, rewind: true, pagination: false, isNavigation: true, arrows: false, focus: 'center' });
+                        this.mainSplide.sync(this.thumbSplide); this.mainSplide.mount(); this.thumbSplide.mount();
+                    }); 
+                },
+                closeGallery() { this.isGalleryOpen = false; },
+                toggleDarkMode() { this.darkMode = !this.darkMode; localStorage.setItem('theme', this.darkMode ? 'dark' : 'light'); },
+                
+                filteredProducts() {
+                    const s = (this.searchQuery || '').trim().toLowerCase();
+                    return this.products.filter(p => {
+                        const name = (p.name || '').toLowerCase(); const oe = (p.oe || '').toLowerCase(); const info = (p.info || '').toLowerCase();
+                        const matches = !s || name.includes(s) || oe.includes(s) || info.includes(s);
+                        const inCategory = this.activeCategory === 'ទាំងអស់' || p.category === this.activeCategory;
+                        return matches && inCategory;
+                    });
+                },
+
+                // ថ្មី៖ ឆែកមើលថាតើទំនិញនេះហ្វ្រីដឹកទេ (Delivery Fee = 0)
+                isFreeDelivery(p) {
+                    if (p.variants && p.variants.length > 0) {
+                        let vIdx = this.selectedVariants[p.id] || 0;
+                        return Number(p.variants[vIdx].dFee) === 0;
+                    }
+                    return Number(p.deliveryFee) === 0;
+                },
+
+                getDisplayPrice(p) {
+                    if (p.variants && p.variants.length > 0) {
+                        let vIdx = this.selectedVariants[p.id] || 0;
+                        return Number(p.variants[vIdx].price).toFixed(2);
+                    }
+                    return Number(p.price).toFixed(2);
+                },
+
+                addToCart(p) { 
+                    let cartKey = String(p.id); let vName = ''; let fPrice = p.price; let fDFee = p.deliveryFee;
+                    if (p.variants && p.variants.length > 0) {
+                        let vIdx = this.selectedVariants[p.id] || 0; let v = p.variants[vIdx];
+                        cartKey = p.id + '_' + vIdx; vName = ' [' + v.name + ']'; fPrice = v.price; fDFee = v.dFee;
+                    }
+                    let item = this.cart.find(i => i.cartKey === cartKey); 
+                    if (item) { item.qty++; } 
+                    else { this.cart.push({ ...p, cartKey: cartKey, name: p.name + vName, price: fPrice, deliveryFee: fDFee, qty: 1, thumb: this.getThumbnail(p) }); } 
+                    this.isCartOpen = true; 
+                },
+
+                updateQty(index, amount) { this.cart[index].qty += amount; if (this.cart[index].qty <= 0) this.cart.splice(index, 1); },
+                removeFromCart(i) { this.cart.splice(i, 1); },
+                cartTotal() { return this.cart.reduce((t, i) => t + (Number(i.price) * i.qty), 0).toFixed(2); },
+                cartTotalQty() { return this.cart.reduce((t, i) => t + i.qty, 0); },
+                
+                calculateDeliveryFee() {
+                    if (this.cart.length === 0) return 0;
+                    let maxFee = 0;
+                    this.cart.forEach(item => { let fee = parseFloat(item.deliveryFee) || 0; if (fee > maxFee) maxFee = fee; });
+                    return maxFee;
+                },
+
+                grandTotal() { return (parseFloat(this.cartTotal()) + this.calculateDeliveryFee()).toFixed(2); },
+
+                async sendToTelegram() {
+                    if (this.cart.length === 0 || !this.customerPhone.trim()) return alert("សូមបំពេញលេខទូរស័ព្ទរបស់អ្នក!");
+                    if (this.isSubmitting) return;
+                    this.isSubmitting = true;
+
+                    try {
+                        let finalItems = this.cart.map(i => ({ id: i.id, name: i.name, price: Number(i.price) || 0, qty: Number(i.qty) || 1 }));
+                        let dFee = this.calculateDeliveryFee();
+                        if (dFee > 0) finalItems.push({ id: 'DEL-FEE', name: '🚚 ថ្លៃសេវាដឹកជញ្ជូន', price: dFee, qty: 1 });
+
+                        const newOrder = { phone: this.customerPhone, address: this.customerAddress, items: finalItems };
+                        const botToken = '8850189652:AAGyYjPdccDRlehPpUwokYflqWNXbAPU_Nc'; 
+                        const chatId = '-1003284987268'; 
+
+                        let message = '🛒 <b>មានការបញ្ជាទិញថ្មីពីវេបសាយ!</b>\n📞 <b>លេខទូរស័ព្ទ៖</b> <code>' + this.customerPhone + '</code>\n';
+                        if (this.customerAddress) message += '📍 <b>ទីតាំង៖</b> ' + this.customerAddress + '\n';
+                        message += '\n📦 <b>បញ្ជីទំនិញ៖</b>\n';
+                        finalItems.forEach(item => {
+                            let priceNum = Number(item.price); let itemPrice = priceNum > 0 ? '$' + priceNum.toFixed(2) : 'Free';
+                            message += '- ' + item.name + ' (' + item.qty + ' x ' + itemPrice + ')\n';
+                        });
+                        message += '\n💰 <b>សរុបទឹកប្រាក់៖ $' + this.grandTotal() + '</b>';
+
+                        await fetch('https://api.telegram.org/bot' + botToken + '/sendMessage', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: 'HTML' }) });
+                        await fetch('/api/sales', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newOrder) });
+                        
+                        alert("អរគុណសម្រាប់ការបញ្ជាទិញ! ក្រុមការងារយើងនឹងទាក់ទងទៅលោកអ្នកឆាប់ៗនេះ។");
+                        this.cart = []; this.isCartOpen = false; this.customerPhone = ''; this.customerAddress = '';
+                    } catch (err) {
+                        console.error("Error:", err); alert("បញ្ជាទិញបានជោគជ័យ! (តែមានការរអាក់រអួលលើប្រព័ន្ធតេឡេក្រាមបន្តិច)");
+                        this.cart = []; this.isCartOpen = false;
+                    } finally { this.isSubmitting = false; }
+                }
+            }
+        }
+    </script>
+</body>
+</html>
